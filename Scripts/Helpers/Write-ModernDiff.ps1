@@ -5,7 +5,7 @@ function Write-ModernDiff {
     
     .DESCRIPTION
     Displays detailed property-level changes with before/after values using Terraform-style visualization.
-    Supports multiple granularity levels: standard, detailed, verbose.
+    Supports multiple granularity levels: standard (minimal), detailed (complete with full context).
     Supports all operation types: new, update, replace, delete.
     
     .PARAMETER ResourceType
@@ -18,7 +18,7 @@ function Write-ModernDiff {
     The operation being performed: new, update, replace, or delete
     
     .PARAMETER Granularity
-    Diff detail level: standard, detailed, or verbose
+    Diff detail level: standard (minimal) or detailed (full context with unchanged properties)
     
     .PARAMETER Indent
     Number of spaces to indent the output
@@ -39,7 +39,7 @@ function Write-ModernDiff {
         [string] $Operation = "update",
         
         [Parameter(Mandatory = $false)]
-        [ValidateSet("standard", "detailed", "verbose")]
+        [ValidateSet("standard", "detailed", "DetailedChangesOnly")]
         [string] $Granularity = "standard",
         
         [Parameter(Mandatory = $false)]
@@ -773,13 +773,13 @@ function Format-DiffEntry {
     
     .DESCRIPTION
     Converts a diff entry object into formatted text with appropriate color coding.
-    Handles sensitive value masking and different granularity levels.
+    Handles sensitive value masking and different granularity levels (standard vs detailed).
     
     .PARAMETER DiffEntry
     The diff entry object to format
     
     .PARAMETER Granularity
-    Diff detail level: standard, detailed, or verbose
+    Diff detail level: standard (minimal) or detailed (full context)
     
     .PARAMETER Indent
     Number of spaces to indent the output
@@ -790,7 +790,7 @@ function Format-DiffEntry {
         [PSCustomObject] $DiffEntry,
         
         [Parameter(Mandatory = $false)]
-        [ValidateSet("standard", "detailed", "verbose")]
+        [ValidateSet("standard", "detailed", "DetailedChangesOnly")]
         [string] $Granularity = "standard",
         
         [Parameter(Mandatory = $false)]
@@ -897,7 +897,7 @@ function ConvertTo-DisplayValue {
         $Value,
         
         [Parameter(Mandatory = $false)]
-        [ValidateSet("standard", "detailed", "verbose")]
+        [ValidateSet("standard", "detailed", "verbose", "DetailedChangesOnly")]
         [string] $Granularity = "standard"
     )
     
@@ -929,7 +929,7 @@ function ConvertTo-DisplayValue {
             return "[$($preview -join ', '), ...(+$($Value.Count - 3) more)]"
         }
         elseif ($Granularity -ne "standard" -and $Value.Count -gt 0) {
-            # Use pretty-printed JSON for detailed/verbose to match terraform style
+            # Use pretty-printed JSON for detailed to match terraform style and provide full context
             $json = $Value | ConvertTo-Json -Depth 100
             # Indent each line for better alignment
             $lines = $json -split '`r?`n'
@@ -948,7 +948,7 @@ function ConvertTo-DisplayValue {
             return "{Object with $propCount properties}"
         }
         else {
-            # Use pretty-printed JSON for detailed/verbose
+            # Use pretty-printed JSON for detailed with full context including unchanged properties
             $json = $Value | ConvertTo-Json -Depth 100
             $lines = $json -split '`r?`n'
             return ($lines -join "`n        ")

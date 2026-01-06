@@ -17,9 +17,12 @@ function Build-ExemptionsPlan {
 
     $generateDiff = ($DiffGranularity -ne "standard")
 
-    Write-ModernSection -Title "Processing Policy Exemptions" -Color Blue
-    $normalizedFolder = $ExemptionsRootFolder -replace '[\\/]+', [System.IO.Path]::DirectorySeparatorChar
-    Write-ModernStatus -Message "Source folder: $normalizedFolder" -Status "info" -Indent 2
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+    if (!$suppressOutput) {
+        Write-ModernSection -Title "Processing Policy Exemptions" -Color Blue
+        $normalizedFolder = $ExemptionsRootFolder -replace '[\\/]+', [System.IO.Path]::DirectorySeparatorChar
+        Write-ModernStatus -Message "Source folder: $normalizedFolder" -Status "info" -Indent 2
+    }
 
     #region read files and cache data structures
     [array] $exemptionFiles = @()
@@ -40,11 +43,15 @@ function Build-ExemptionsPlan {
     $now = Get-Date -AsUTC
     #endregion read files and cache data structures
 
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+    
     if ($exemptionFiles.Length -eq 0) {
         Write-ModernStatus -Message "No exemption files found - all exemptions will be deleted" -Status "warning" -Indent 2
     }
     else {
-        Write-ModernStatus -Message "Found $($exemptionFiles.Length) exemption files" -Status "success" -Indent 2
+        if (!$suppressOutput) {
+            Write-ModernStatus -Message "Found $($exemptionFiles.Length) exemption files" -Status "success" -Indent 2
+        }
 
         #region pre-calculate assignments
         $sortedAssignments = $AllAssignments.Values | Sort-Object -Property id # for a stable order
@@ -63,7 +70,9 @@ function Build-ExemptionsPlan {
             $extension = $file.Extension
             $fullName = $file.FullName
             # $fileName = $file.Name
-            Write-ModernStatus -Message "Processing exemption file '$($fullName)'" -Status "info" -Indent 2
+            if (!$suppressOutput) {
+                Write-ModernStatus -Message "Processing exemption file '$($fullName)'" -Status "info" -Indent 2
+            }
             $errorInfo = New-ErrorInfo -FileName $fullName
             $exemptionsArray = [System.Collections.ArrayList]::new()
             $isCsvFile = $false
@@ -955,11 +964,15 @@ function Build-ExemptionsPlan {
                                     # Replaced Assignment
                                     if ($reasonStrings.Count -gt 0) {
                                         $reasonString = "assignmentId changed, $($reasonStrings -join ", ")"
-                                        Write-ModernStatus -Message "Skip replace ($reasonString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "warning" -Indent 4
+                                        if (!$suppressOutput) {
+                                            Write-ModernStatus -Message "Skip replace ($reasonString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "warning" -Indent 4
+                                        }
                                         $Exemptions.numberUnchanged++
                                     }
                                     else {
-                                        Write-ModernStatus -Message "Replace (assignmentId changed) '$($exemptionDisplayName)' at scope '$($currentScope)'`n      assignmentId '$($deployedManagedExemption.policyAssignmentId)' to '$($policyAssignmentId)'" -Status "update" -Indent 4
+                                        if (!$suppressOutput) {
+                                            Write-ModernStatus -Message "Replace (assignmentId changed) '$($exemptionDisplayName)' at scope '$($currentScope)'`n      assignmentId '$($deployedManagedExemption.policyAssignmentId)' to '$($policyAssignmentId)'" -Status "update" -Indent 4
+                                        }
                                         Write-Verbose "    $exemptionId"
                                         # Store replacement reason
                                         $exemption | Add-Member -MemberType NoteProperty -Name "replacementReason" -Value @("assignmentId") -Force
@@ -971,11 +984,15 @@ function Build-ExemptionsPlan {
                                     # Replaced Assignment
                                     if ($reasonStrings.Count -gt 0) {
                                         $reasonString = "replaced assignment, $($reasonStrings -join ", ")"
-                                        Write-ModernStatus -Message "Skip replace ($reasonString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "warning" -Indent 4
+                                        if (!$suppressOutput) {
+                                            Write-ModernStatus -Message "Skip replace ($reasonString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "warning" -Indent 4
+                                        }
                                         $Exemptions.numberUnchanged++
                                     }
                                     else {
-                                        Write-ModernStatus -Message "Replace (replaced assignment) '$($exemptionDisplayName)' ($($exemptionName)) at scope '$($currentScope)'`n      assignmentId '$($policyAssignmentId)'" -Status "update" -Indent 4
+                                        if (!$suppressOutput) {
+                                            Write-ModernStatus -Message "Replace (replaced assignment) '$($exemptionDisplayName)' ($($exemptionName)) at scope '$($currentScope)'`n      assignmentId '$($policyAssignmentId)'" -Status "update" -Indent 4
+                                        }
                                         # Store replacement reason
                                         $exemption | Add-Member -MemberType NoteProperty -Name "replacementReason" -Value @("replacedAssignment") -Force
                                         $null = $Exemptions.replace.Add($exemptionId, $exemption)
@@ -1087,12 +1104,16 @@ function Build-ExemptionsPlan {
                                         $changesString = $changesStrings -join ", "
                                         if ($reasonStrings.Count -gt 0) {
                                             $reasonString = "$($reasonStrings -join ", "), $changesString"
-                                            Write-ModernStatus -Message "Skip update ($reasonString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "warning" -Indent 4
+                                            if (!$suppressOutput) {
+                                                Write-ModernStatus -Message "Skip update ($reasonString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "warning" -Indent 4
+                                            }
                                             $Exemptions.numberUnchanged++
                                         }
                                         else {
                                             $Exemptions.numberOfChanges++
-                                            Write-ModernStatus -Message "Update ($changesString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "update" -Indent 4
+                                            if (!$suppressOutput) {
+                                                Write-ModernStatus -Message "Update ($changesString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "update" -Indent 4
+                                            }
                                             $null = $Exemptions.update.Add($exemptionId, $exemption)
                                         }
                                     }
@@ -1101,11 +1122,15 @@ function Build-ExemptionsPlan {
                             else {
                                 if ($reasonStrings.Count -gt 0) {
                                     $reasonString = $reasonStrings -join ", "
-                                    Write-ModernStatus -Message "Skip new exemption ($reasonString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "update" -Indent 4
+                                    if (!$suppressOutput) {
+                                        Write-ModernStatus -Message "Skip new exemption ($reasonString): '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "update" -Indent 4
+                                    }
                                 }
                                 else {
                                     # Create Exemption
-                                    Write-ModernStatus -Message "New '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "success" -Indent 4
+                                    if (!$suppressOutput) {
+                                        Write-ModernStatus -Message "New '$($exemptionDisplayName)' at scope '$($currentScope)'" -Status "success" -Indent 4
+                                    }
                                     $null = $Exemptions.new.Add($exemptionId, $exemption)
                                     $Exemptions.numberOfChanges++
                                 }
@@ -1166,7 +1191,9 @@ function Build-ExemptionsPlan {
         }
         if ($shallDelete) {
             # check fo special Exemption cases
-            Write-ModernStatus -Message "Delete '$($exemption.displayName)' at scope '$($exemption.scope)'" -Status "error" -Indent 4
+            if (!$suppressOutput) {
+                Write-ModernStatus -Message "Delete '$($exemption.displayName)' at scope '$($exemption.scope)'" -Status "error" -Indent 4
+            }
             Write-Verbose "    $exemptionId"
             $null = $Exemptions.delete[$exemptionId] = $exemption
             $Exemptions.numberOfChanges++

@@ -8,9 +8,11 @@ function Write-AssignmentDetails {
         $ScopeTable
     )
 
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+    
     $tenantScopes = $ScopeTable.keys
     $shortScope = $Scope -replace "/providers/Microsoft.Management", ""
-    if ($Prefix -ne "") {
+    if ($Prefix -ne "" -and !$suppressOutput) {
         if ($Prefix -like "*update*") {
             Write-ModernStatus -Message "$($Prefix): $($DisplayName) at $($shortScope)" -Status "update" -Indent 4
         }
@@ -25,9 +27,11 @@ function Write-AssignmentDetails {
         }
     }
     else {
-        Write-ModernStatus -Message "$($DisplayName) at $($shortScope)" -Status "info" -Indent 4
+        if (!$suppressOutput) {
+            Write-ModernStatus -Message "$($DisplayName) at $($shortScope)" -Status "info" -Indent 4
+        }
     }
-    if ($IdentityStatus.requiresRoleChanges) {
+    if ($IdentityStatus.requiresRoleChanges -and !$suppressOutput) {
         foreach ($role in $IdentityStatus.updated) {
             $roleScope = $role.scope
             $roleShortScope = $roleScope -replace "/providers/Microsoft.Management", ""

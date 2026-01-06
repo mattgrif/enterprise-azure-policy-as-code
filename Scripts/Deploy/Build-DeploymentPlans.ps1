@@ -69,8 +69,8 @@ param (
 
     [switch]$SkipNotScopedExemptions,
 
-    [Parameter(HelpMessage = "Level of detail for diff output: standard (default, current behavior), detailed (property-level changes with metadata/arrays).")]
-    [ValidateSet("standard", "detailed")]
+    [Parameter(HelpMessage = "Level of detail for diff output: standard (default, current behavior), detailed (property-level changes with metadata/arrays), DetailedChangesOnly (suppresses processing output, shows only key sections and changes).")]
+    [ValidateSet("standard", "detailed", "DetailedChangesOnly")]
     [string] $DiffGranularity = "standard"
 )
 
@@ -115,7 +115,12 @@ elseif ($pacEnvironment.outputPreferences -and $pacEnvironment.outputPreferences
 $Global:EPAC_DiffGranularity = $DiffGranularity
 
 # Set flag to suppress intermediate processing output for ChangeDetails mode
-$suppressProcessingOutput = ($DiffGranularity -eq "ChangeDetails")
+$suppressProcessingOutput = ($DiffGranularity -eq "ChangeDetails" -or $DiffGranularity -eq "DetailedChangesOnly")
+
+# Initialize global issues collection for DetailedChangesOnly mode
+if ($DiffGranularity -eq "DetailedChangesOnly") {
+    $Global:EPAC_CollectedIssues = [System.Collections.ArrayList]::new()
+}
 
 # Display environment information
 Write-ModernSection -Title "Environment Configuration" -Color Blue
@@ -752,6 +757,17 @@ if ($DiffGranularity -ne "standard" -and ($policyResourceChanges -gt 0 -or $role
 }
 
 Write-Host ""
+
+# Display Issues Identified section for DetailedChangesOnly mode
+if ($DiffGranularity -eq "DetailedChangesOnly" -and (Get-Variable -Name EPAC_CollectedIssues -Scope Global -ErrorAction SilentlyContinue)) {
+    if ($Global:EPAC_CollectedIssues.Count -gt 0) {
+        Write-ModernSection -Title "Issues Identified" -Color Yellow
+        foreach ($issue in $Global:EPAC_CollectedIssues) {
+            Write-ModernStatus -Message $issue -Status "warning" -Indent 2
+        }
+        Write-Host ""
+    }
+}
 
 switch ($DevOpsType) {
     ado {

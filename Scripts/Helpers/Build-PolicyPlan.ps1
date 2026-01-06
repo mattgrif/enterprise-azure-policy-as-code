@@ -13,19 +13,24 @@ function Build-PolicyPlan {
 
     $generateDiff = ($DiffGranularity -ne "standard")
 
-    Write-ModernSection -Title "Processing Policy Definitions" -Color Blue
-    $normalizedFolder = $DefinitionsRootFolder -replace '[\\/]+', [System.IO.Path]::DirectorySeparatorChar
-    Write-ModernStatus -Message "Source folder: $normalizedFolder" -Status "info" -Indent 2
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+    if (!$suppressOutput) {
+        Write-ModernSection -Title "Processing Policy Definitions" -Color Blue
+        $normalizedFolder = $DefinitionsRootFolder -replace '[\\\\//]+', [System.IO.Path]::DirectorySeparatorChar
+        Write-ModernStatus -Message "Source folder: $normalizedFolder" -Status "info" -Indent 2
+    }
 
     # Process Policy definitions JSON files, if any
     $definitionFiles = @()
     $definitionFiles += Get-ChildItem -Path $DefinitionsRootFolder -Recurse -File -Filter "*.json"
     $definitionFiles += Get-ChildItem -Path $DefinitionsRootFolder -Recurse -File -Filter "*.jsonc"
-    if ($definitionFiles.Length -gt 0) {
-        Write-ModernStatus -Message "Found $($definitionFiles.Length) policy files" -Status "success" -Indent 2
-    }
-    else {
-        Write-ModernStatus -Message "No policy files found - all custom definitions will be deleted" -Status "warning" -Indent 2
+    if (!$suppressOutput) {
+        if ($definitionFiles.Length -gt 0) {
+            Write-ModernStatus -Message "Found $($definitionFiles.Length) policy files" -Status "success" -Indent 2
+        }
+        else {
+            Write-ModernStatus -Message "No policy files found - all custom definitions will be deleted" -Status "warning" -Indent 2
+        }
     }
 
     $managedDefinitions = $DeployedDefinitions.managed
@@ -218,19 +223,25 @@ function Build-PolicyPlan {
 
                 if ($incompatible) {
                     # check if parameters are compatible with an update. Otherwise the Policy will need to be deleted (and any PolicySets and Assignments referencing the Policy)
-                    Write-ModernStatus -Message "Replace ($changesString): $($displayName)" -Status "warning" -Indent 4
+                    if (!$suppressOutput) {
+                        Write-ModernStatus -Message "Replace ($changesString): $($displayName)" -Status "warning" -Indent 4
+                    }
                     $null = $definitionsReplace.Add($id, $definition)
                     $null = $ReplaceDefinitions.Add($id, $definition)
                 }
                 else {
-                    Write-ModernStatus -Message "Update ($changesString): $($displayName)" -Status "update" -Indent 4
+                    if (!$suppressOutput) {
+                        Write-ModernStatus -Message "Update ($changesString): $($displayName)" -Status "update" -Indent 4
+                    }
                     $null = $definitionsUpdate.Add($id, $definition)
                 }
             }
         }
         else {
             $null = $definitionsNew.Add($id, $definition)
-            Write-ModernStatus -Message "New: $($displayName)" -Status "success" -Indent 4
+            if (!$suppressOutput) {
+                Write-ModernStatus -Message "New: $($displayName)" -Status "success" -Indent 4
+            }
         }
     }
 
@@ -271,6 +282,8 @@ function Build-PolicyPlan {
     $Definitions.numberUnchanged = $definitionsUnchanged
     $Definitions.numberOfChanges = $Definitions.new.Count + $Definitions.update.Count + $Definitions.replace.Count + $Definitions.delete.Count
 
-    Write-ModernStatus -Message "Unchanged Policy Definitions: $($Definitions.numberUnchanged)" -Status "status" -Indent 2
-    Write-Information ""
+    if (!$suppressOutput) {
+        Write-ModernStatus -Message "Unchanged Policy Definitions: $($Definitions.numberUnchanged)" -Status "status" -Indent 2
+        Write-Information ""
+    }
 }

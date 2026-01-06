@@ -78,12 +78,13 @@ function Get-AzPolicyAssignments {
             $roleAssignmentsLastCount = 0
             $roleAssignmentsProcessed = @{}
             $roleDefinitionsProcessed = @{}
+            $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
             foreach ($scopeId in $ScopeTable.Keys) {
                 $scopeInformation = $ScopeTable.$scopeId
                 if ($scopeInformation.type -ne "microsoft.resources/subscriptions/resourceGroups" -and $scopeId -ne "root") {
                     $roleAssignmentsLocal = Get-AzRoleAssignmentsRestMethod -Scope $scopeId -ApiVersion $PacEnvironment.apiVersions.roleAssignments
                     $roleAssignmentsCount += $roleAssignmentsLocal.Count
-                    if (($roleAssignmentsLastCount + 10000) -le $roleAssignmentsCount) {
+                    if (($roleAssignmentsLastCount + 10000) -le $roleAssignmentsCount -and !$suppressOutput) {
                         Write-Information "Retrieved $roleAssignmentsCount $($ProgressItemName)"
                         $roleAssignmentsLastCount = $roleAssignmentsCount
                     }
@@ -99,7 +100,7 @@ function Get-AzPolicyAssignments {
 
                 }
             }
-            if ($roleAssignmentsCount -gt $roleAssignmentsLastCount) {
+            if ($roleAssignmentsCount -gt $roleAssignmentsLastCount -and !$suppressOutput) {
                 Write-Information "Retrieved $roleAssignmentsCount $($ProgressItemName), collected $($roleAssignmentsProcessed.Count) unique $($ProgressItemName)"
             }
             $scopeInformation = $ScopeTable.root
@@ -135,7 +136,9 @@ function Get-AzPolicyAssignments {
                     $null = $roleDefinitions.Add($roleDefinition)
                 }
             }
-            Write-Information "Retrieved $($roleDefinitionsProcessed.Count) unique Role Definitions"
+            if (!$suppressOutput) {
+                Write-Information "Retrieved $($roleDefinitionsProcessed.Count) unique Role Definitions"
+            }
         }
         else {
             $roleAssignmentsLocal = Search-AzGraphAllItems `

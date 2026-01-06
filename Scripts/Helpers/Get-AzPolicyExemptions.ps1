@@ -20,6 +20,7 @@ function Get-AzPolicyExemptions {
         $count = 0
         $lastCount = 0
         $exemptionsProcessed = @{}
+        $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
         foreach ($scopeId in $ScopeTable.Keys) {
             $scopeInformation = $ScopeTable.$scopeId
             if ($scopeInformation.type -ne "microsoft.resources/subscriptions/resourceGroups" -and $scopeId -ne "root") {
@@ -31,7 +32,7 @@ function Get-AzPolicyExemptions {
                     $exemptionsLocal = Get-AzPolicyExemptionsRestMethod -Scope $scopeId -Filter "atScope()" -ApiVersion $PacEnvironment.apiVersions.policyExemptions
                 }
                 $count += $exemptionsLocal.Count
-                if (($lastCount + 1000) -le $count) {
+                if (($lastCount + 1000) -le $count -and !$suppressOutput) {
                     Write-Information "Retrieved $count $($ProgressItemName)"
                     $lastCount = $count
                 }
@@ -44,7 +45,9 @@ function Get-AzPolicyExemptions {
                 }
             }
         }
-        Write-Information "Retrieved $($count) $($ProgressItemName), collected $($exemptionsProcessed.Count) unique $($ProgressItemName)"
+        if (!$suppressOutput) {
+            Write-Information "Retrieved $($count) $($ProgressItemName), collected $($exemptionsProcessed.Count) unique $($ProgressItemName)"
+        }
     }
     else {
         $query = "PolicyResources | where type == 'microsoft.authorization/policyexemptions'"

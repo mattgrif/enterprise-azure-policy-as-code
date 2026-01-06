@@ -7,7 +7,7 @@ function Build-ScopeTableForDeploymentRootScope {
     $deploymentRootScope = $PacEnvironment.deploymentRootScope
     $tenantId = $PacEnvironment.tenantId
     
-    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails")
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
     if (!$suppressOutput) {
         Write-ModernSection -Title "Building Scope Tree" -Color Blue
         Write-ModernStatus -Message "Environment: $($PacEnvironment.pacSelector)" -Status "info" -Indent 2
@@ -43,7 +43,9 @@ function Build-ScopeTableForDeploymentRootScope {
         -Query $resourceGroupQuery `
         -ScopeSplat $scopeSplat `
         -ProgressItemName "Resource Groups"
-    Write-ModernStatus -Message "Processing $($resourceGroups.Count) Resource Groups..." -Status "info" -Indent 2
+    if (!$suppressOutput) {
+        Write-ModernStatus -Message "Processing $($resourceGroups.Count) Resource Groups..." -Status "info" -Indent 2
+    }
     foreach ($resourceGroup in $resourceGroups) {
         $subscriptionId = $resourceGroup.subscriptionId
         $id = $resourceGroup.id
@@ -138,16 +140,18 @@ function Build-ScopeTableForDeploymentRootScope {
     }
     #endregion process subscriptions and/or management groups
 
-    Write-ModernSection -Title "Scope Tree Complete" -Color Green
-    if ($numberOfManagementGroups -gt 0) {
-        $numberOfManagementGroups-- # subtract 1 for the root scope
-        Write-ModernStatus -Message "Management groups: $($numberOfManagementGroups)" -Status "success" -Indent 2
+    if (!$suppressOutput) {
+        Write-ModernSection -Title "Scope Tree Complete" -Color Green
+        if ($numberOfManagementGroups -gt 0) {
+            $numberOfManagementGroups-- # subtract 1 for the root scope
+            Write-ModernStatus -Message "Management groups: $($numberOfManagementGroups)" -Status "success" -Indent 2
+        }
+        if ($deploymentRootScope.StartsWith("/subscriptions/")) {
+            $numberOfSubscriptions-- # subtract 1 for the root scope
+        }
+        Write-ModernStatus -Message "Subscriptions: $($numberOfSubscriptions)" -Status "success" -Indent 2
+        Write-ModernStatus -Message "Resource groups: $($numberofResourceGroups)" -Status "success" -Indent 2
     }
-    if ($deploymentRootScope.StartsWith("/subscriptions/")) {
-        $numberOfSubscriptions-- # subtract 1 for the root scope
-    }
-    Write-ModernStatus -Message "Subscriptions: $($numberOfSubscriptions)" -Status "success" -Indent 2
-    Write-ModernStatus -Message "Resource groups: $($numberofResourceGroups)" -Status "success" -Indent 2
 
     return $scopeTable
 }

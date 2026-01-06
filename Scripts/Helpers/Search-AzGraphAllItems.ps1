@@ -85,9 +85,11 @@ function Search-AzGraphAllItems {
     $result = $content | ConvertFrom-Json -Depth 100 -AsHashtable
     $count = $result.count
 
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+
     if ($count -gt 0) {
         $null = $data.AddRange($result.data)
-        if ($data.count % $ProgressIncrement -eq 0) {
+        if ($data.count % $ProgressIncrement -eq 0 -and !$suppressOutput) {
             Write-ModernStatus -Message "Retrieved $($data.count) $ProgressItemName" -Status "info" -Indent 4
         }
         while ($result.ContainsKey("`$skipToken")) {
@@ -106,7 +108,7 @@ function Search-AzGraphAllItems {
             $count = $result.count
             if ($count -gt 0) {
                 $null = $data.AddRange($result.data)
-                if ($data.count % $ProgressIncrement -eq 0) {
+                if ($data.count % $ProgressIncrement -eq 0 -and !$suppressOutput) {
                     Write-ModernStatus -Message "Retrieved $($data.count) $ProgressItemName" -Status "info" -Indent 4
                 }
             }
@@ -115,12 +117,14 @@ function Search-AzGraphAllItems {
             }
         }
         $count = $data.Count
-        if ($count % $ProgressIncrement -ne 0) {
+        if ($count % $ProgressIncrement -ne 0 -and !$suppressOutput) {
             Write-ModernStatus -Message "Retrieved $($count) $ProgressItemName" -Status "success" -Indent 4
         }
     }
     else {
-        Write-ModernStatus -Message "No $ProgressItemName found" -Status "info" -Indent 4
+        if (!$suppressOutput) {
+            Write-ModernStatus -Message "No $ProgressItemName found" -Status "info" -Indent 4
+        }
     }
     Write-Output $data -NoEnumerate
 }

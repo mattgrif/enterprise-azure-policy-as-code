@@ -263,6 +263,11 @@ function Write-ModernCountSummary {
         [int]$Indent = 2
     )
     
+    # Skip output for DetailedChangesOnly mode
+    if ($Global:EPAC_DiffGranularity -eq "DetailedChangesOnly") {
+        return
+    }
+    
     # This function calls other Write-Modern* functions which will handle appending to epacInfoStream
     Write-ModernSection -Title "$Type Summary" -Indent 0
     

@@ -5,8 +5,11 @@ function Convert-PolicyResourcesToDetails {
         [hashtable] $AllPolicySetDefinitions
     )
 
-    Write-ModernSection -Title "Pre-calculating Policy Parameters" -Color Blue
-    Write-ModernStatus -Message "Processing Policy and Policy Set definitions for effect analysis" -Status "info" -Indent 2
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+    if (!$suppressOutput) {
+        Write-ModernSection -Title "Pre-calculating Policy Parameters" -Color Blue
+        Write-ModernStatus -Message "Processing Policy and Policy Set definitions for effect analysis" -Status "info" -Indent 2
+    }
 
     # Convert Policy Definitions to Details
     $policyDetails = @{}
@@ -32,7 +35,9 @@ function Convert-PolicyResourcesToDetails {
         $funcConvertToHashTable = ${function:ConvertTo-HashTable}.ToString()
         
         # loop through each chunk of Policy definitions and process in parallel
-        Write-ModernStatus -Message "Processing $($AllPolicyDefinitions.psbase.Count) Policy definitions using $throttleLimit parallel threads" -Status "info" -Indent 2
+        if (!$suppressOutput) {
+            Write-ModernStatus -Message "Processing $($AllPolicyDefinitions.psbase.Count) Policy definitions using $throttleLimit parallel threads" -Status "info" -Indent 2
+        }
         $chunks | ForEach-Object -ThrottleLimit $chunks.count -Parallel {
             # import dot sourced functions into context
             if ($null -eq ${function:Get-PolicyResourceProperties}) {
@@ -90,7 +95,9 @@ function Convert-PolicyResourcesToDetails {
         $funcConvertToHashTable = ${function:ConvertTo-HashTable}.ToString()
         
         # loop through each chunk of Policy definitions and process in parallel
-        Write-ModernStatus -Message "Processing $($AllPolicySetDefinitions.psbase.Count) Policy Set definitions using $throttleLimit parallel threads" -Status "info" -Indent 2
+        if (!$suppressOutput) {
+            Write-ModernStatus -Message "Processing $($AllPolicySetDefinitions.psbase.Count) Policy Set definitions using $throttleLimit parallel threads" -Status "info" -Indent 2
+        }
         $chunks | ForEach-Object -ThrottleLimit $chunks.count -Parallel {
             # import dot sourced functions into context
             if ($null -eq ${function:Get-PolicyResourceProperties}) {
@@ -128,7 +135,9 @@ function Convert-PolicyResourcesToDetails {
         }
     }
 
-    Write-ModernStatus -Message "Policy parameter pre-calculation complete" -Status "success" -Indent 2
+    if (!$suppressOutput) {
+        Write-ModernStatus -Message "Policy parameter pre-calculation complete" -Status "success" -Indent 2
+    }
 
     # Assemble result
     $combinedPolicyDetails = @{

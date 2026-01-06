@@ -13,19 +13,24 @@ function Build-PolicySetPlan {
 
     $generateDiff = ($DiffGranularity -ne "standard")
 
-    Write-ModernSection -Title "Processing Policy Set Definitions" -Color Blue
-    $normalizedFolder = $DefinitionsRootFolder -replace '[\\/]+', [System.IO.Path]::DirectorySeparatorChar
-    Write-ModernStatus -Message "Source folder: $normalizedFolder" -Status "info" -Indent 2
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+    if (!$suppressOutput) {
+        Write-ModernSection -Title "Processing Policy Set Definitions" -Color Blue
+        $normalizedFolder = $DefinitionsRootFolder -replace '[\\\\//]+', [System.IO.Path]::DirectorySeparatorChar
+        Write-ModernStatus -Message "Source folder: $normalizedFolder" -Status "info" -Indent 2
+    }
 
     # Process Policy Set JSON files if any
     $definitionFiles = @()
     $definitionFiles += Get-ChildItem -Path $DefinitionsRootFolder -Recurse -File -Filter "*.json"
     $definitionFiles += Get-ChildItem -Path $DefinitionsRootFolder -Recurse -File -Filter "*.jsonc"
-    if ($definitionFiles.Length -gt 0) {
-        Write-ModernStatus -Message "Found $($definitionFiles.Length) policy set files" -Status "success" -Indent 2
-    }
-    else {
-        Write-ModernStatus -Message "No policy set files found - all custom definitions will be deleted" -Status "warning" -Indent 2
+    if (!$suppressOutput) {
+        if ($definitionFiles.Length -gt 0) {
+            Write-ModernStatus -Message "Found $($definitionFiles.Length) policy set files" -Status "success" -Indent 2
+        }
+        else {
+            Write-ModernStatus -Message "No policy set files found - all custom definitions will be deleted" -Status "warning" -Indent 2
+        }
     }
 
     $managedDefinitions = $DeployedDefinitions.managed
@@ -323,18 +328,24 @@ function Build-PolicySetPlan {
 
                 if ($incompatible -or $containsReplacedPolicy) {
                     # Check if parameters are compatible with an update or id the set includes at least one Policy which is being replaced.
-                    Write-ModernStatus -Message "Replace ($changesString): $($displayName)" -Status "warning" -Indent 4
+                    if (!$suppressOutput) {
+                        Write-ModernStatus -Message "Replace ($changesString): $($displayName)" -Status "warning" -Indent 4
+                    }
                     $null = $Definitions.replace.Add($id, $definition)
                     $null = $ReplaceDefinitions.Add($id, $definition)
                 }
                 else {
-                    Write-ModernStatus -Message "Update ($changesString): $($displayName)" -Status "update" -Indent 4
+                    if (!$suppressOutput) {
+                        Write-ModernStatus -Message "Update ($changesString): $($displayName)" -Status "update" -Indent 4
+                    }
                     $null = $Definitions.update.Add($id, $definition)
                 }
             }
         }
         else {
-            Write-ModernStatus -Message "New: $($displayName)" -Status "success" -Indent 4
+            if (!$suppressOutput) {
+                Write-ModernStatus -Message "New: $($displayName)" -Status "success" -Indent 4
+            }
             $null = $Definitions.new.Add($id, $definition)
             $Definitions.numberOfChanges++
 
@@ -352,7 +363,9 @@ function Build-PolicySetPlan {
             # always delete if owned by this Policy as Code solution
             # never delete if owned by another Policy as Code solution
             # if strategy is "full", delete with unknown owner (missing pacOwnerId)
-            Write-ModernStatus -Message "Delete: $($deleteCandidateProperties.displayName)" -Status "error" -Indent 4
+            if (!$suppressOutput) {
+                Write-ModernStatus -Message "Delete: $($deleteCandidateProperties.displayName)" -Status "error" -Indent 4
+            }
             $splat = @{
                 id          = $id
                 name        = $deleteCandidate.name
@@ -373,7 +386,9 @@ function Build-PolicySetPlan {
         }
     }
 
-    Write-ModernStatus -Message "Unchanged Policy Set Definitions: $($Definitions.numberUnchanged)" -Status "status" -Indent 2
-    # Write-ModernCountSummary -Operation "Policy Set Definitions" -Unchanged $Definitions.numberUnchanged
-    Write-Information ""
+    if (!$suppressOutput) {
+        Write-ModernStatus -Message "Unchanged Policy Set Definitions: $($Definitions.numberUnchanged)" -Status "status" -Indent 2
+        # Write-ModernCountSummary -Operation "Policy Set Definitions" -Unchanged $Definitions.numberUnchanged
+        Write-Information ""
+    }
 }

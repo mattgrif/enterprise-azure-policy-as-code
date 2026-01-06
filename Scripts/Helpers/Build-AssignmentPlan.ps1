@@ -17,9 +17,12 @@ function Build-AssignmentPlan {
 
     $generateDiff = ($DiffGranularity -ne "standard")
 
-    Write-ModernSection -Title "Processing Policy Assignments" -Color Blue
-    $normalizedFolder = $AssignmentsRootFolder -replace '[\\/]+', [System.IO.Path]::DirectorySeparatorChar
-    Write-ModernStatus -Message "Source folder: $normalizedFolder" -Status "info" -Indent 2
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+    if (!$suppressOutput) {
+        Write-ModernSection -Title "Processing Policy Assignments" -Color Blue
+        $normalizedFolder = $AssignmentsRootFolder -replace '[\\/]+', [System.IO.Path]::DirectorySeparatorChar
+        Write-ModernStatus -Message "Source folder: $normalizedFolder" -Status "info" -Indent 2
+    }
 
     $assignmentFiles = @()
     $assignmentFiles += Get-ChildItem -Path $AssignmentsRootFolder -Recurse -File -Filter "*.json"
@@ -27,7 +30,9 @@ function Build-AssignmentPlan {
     $csvFiles = Get-ChildItem -Path $AssignmentsRootFolder -Recurse -File -Filter "*.csv"
     $parameterFilesCsv = @{}
     if ($assignmentFiles.Length -gt 0) {
-        Write-ModernStatus -Message "Found $($assignmentFiles.Length) assignment files" -Status "success" -Indent 2
+        if (!$suppressOutput) {
+            Write-ModernStatus -Message "Found $($assignmentFiles.Length) assignment files" -Status "success" -Indent 2
+        }
         foreach ($csvFile in $csvFiles) {
             $parameterFilesCsv.Add($csvFile.Name, $csvFile.FullName)
         }
@@ -432,5 +437,8 @@ function Build-AssignmentPlan {
     if ($isUserAssignedAny) {
         Write-ModernStatus -Message "User-assigned Managed Identities detected - EPAC does not manage their role assignments" -Status "warning" -Indent 2
     }
-    Write-ModernStatus -Message "Unchanged assignments: $($Assignments.numberUnchanged)" -Status "info" -Indent 2
+    $suppressOutput = ($Global:EPAC_DiffGranularity -eq "ChangeDetails" -or $Global:EPAC_DiffGranularity -eq "DetailedChangesOnly")
+    if (!$suppressOutput) {
+        Write-ModernStatus -Message "Unchanged assignments: $($Assignments.numberUnchanged)" -Status "info" -Indent 2
+    }
 }
